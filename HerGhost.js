@@ -31,10 +31,10 @@ var
 		}
 		HerGhost.ready(obj.ready);
 		this.data = obj.data; 
-		observr(this.data,this); 
+		HerGhost.$loader.use('drive').observr(this.data,this); 
 		var 
-			id = obj.el,
-			dom = nodeToFragment(document.getElementById(id),this,obj);
+			id = obj.element,
+			dom = HerGhost.$loader.use('drive').nodeToFragment(document.getElementById(id),this,obj);
 		document.getElementById(id).appendChild(dom);
 		return this;
 	};
@@ -72,7 +72,7 @@ var
         	arr.push(arguments[0]);
         }
         if (arr.length!==2){
-        	throw Error("arr.length error!length isn't two(2)");
+        	throw Error("HerGhost.fn.extend/HerGhost.fn args error!");
 		}
         for (i = arr.length - 1; i >= 0; i--) {
             _extend(arr[i], result);
@@ -122,82 +122,6 @@ var
 		    }
 		    return uuid.join('');
 		},
-		XHR_$O:(function () {
-			if (typeof XMLHttpRequest !== 'undefined') {
-				return new XMLHttpRequest();
-			}
-			var versions = [
-				"MSXML2.XmlHttp.6.0",
-				"MSXML2.XmlHttp.5.0",
-				"MSXML2.XmlHttp.4.0",
-				"MSXML2.XmlHttp.3.0",
-				"MSXML2.XmlHttp.2.0",
-				"Microsoft.XmlHttp"
-			];
-			var xhr;
-			for (var i = 0; i < versions.length; i++) {
-				try {
-					xhr = new ActiveXObject(versions[i]);
-					break;
-				} catch (e) {
-				}
-			}
-			return xhr;
-		})(),
-		XHRSend_$F:function(url, method, data, success,fail,async,progress){
-			if (async === undefined) {
-				async = true;
-			}
-			var x = this.XHR_$O;
-			if(typeof progress == 'function'){
-				x.addEventListener("progress", progress);
-			}
-			x.open(method, url, async);
-			x.onreadystatechange = function () {
-				switch(x.readyState){
-					case 1:
-						
-						break;
-					case 2:
-						break;
-					case 3:
-						break;
-					case 4:
-						var 
-							status = x.status;
-						if (status >= 200 && status < 300) {
-							success && success(x.responseText,x.responseXML)
-						} else {
-							fail && fail(status);
-						}
-						break;
-					default:
-						throw new Error("AJAX onreadystatechange ERROR!");
-						break;
-				}
-			};
-			if (method == 'POST') {
-				x.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
-			}
-			x.send(data);
-		},
-		ajax:function(options){
-			var query = [];
-			for (var key in options.data) {
-				query.push(encodeURIComponent(key) + '=' + encodeURIComponent(options.data[key]));
-			}
-			switch (options.type.toUpperCase()){
-				case 'GET':
-					this.XHRSend_$F(options.url + (query.length ? '?' + query.join('&') : ''), 'GET', null, options.success, options.fail, options.async,options.progress);
-					break;
-				case 'POST':
-					this.XHRSend_$F(options.url,'POST', query.join('&'), options.success, options.fail, options.async,options.progress)
-					break;
-				default:
-					throw new Error("Unset Ajax GET/POST");
-					break;
-			}
-		},
 		ready:(function() {
 		    var funcs = [];      
 		    var ready = false;  
@@ -227,155 +151,285 @@ var
 		        else { funcs.push(fn); }
 		    }
 		})(),
-		componentReused_$A:[]
-	});
-	function componentsToDocument(component,node){
-		if((typeof component.template)!=='undefined'){
-			node.innerHTML = component.template;
-		}else if((typeof component.templateUrl)!=='undefined'){
-			var componentUrl_$S = HerGhost.componentReused_$A[component.templateUrl];
-			if(componentUrl_$S){
-				node.innerHTML = componentUrl_$S;
-			}else{
-				HerGhost.ajax({
-					url:component.templateUrl,
-					type:'GET',
-					async:false,
-					success:function(text){
-						node.innerHTML = HerGhost.componentReused_$A[component.templateUrl] = text;
-					},
-					fail:function(status){
-						throw new Error("componentsToFragment:fail,status:"+status);
-					},
-				});
-			}
-		}else{
-			throw new Error('template/templateUrl is empty!');
-		}
-		node.childNodes[0].setAttribute('hg-'+HerGhost.uuid(10,16),'');
-		node.parentElement.replaceChild(node.childNodes[0],node);
-	}
-	function nodeToFragment(node,context,options){
-		var 
-			flag = document.createDocumentFragment(),
-			child,c,COMPLIERFLAG = false;
-			while(child=node.firstChild){
-				if(child.nodeName in options.components){
-					COMPLIERFLAG = true;
-					componentsToDocument(options.components[child.nodeName],child);
-				}else{
-					if(!COMPLIERFLAG){
-						complier(child,context);
-					}
-						COMPLIERFLAG = false;
-						flag.appendChild(child);
-				}
-			}
-			return flag;
-	}
-	function complier(node,context){
-		var
-			reg_g = /[\{][\{]([^\{\}]*)[\}][\}]/g, 
-			reg_content = /\{\{(.*)\}\}/,
-			attr,
-			nodeText = [],
-			isExistArr = [];
-			
-		if(node.nodeType === 1){
-			for(var i=0;i<node.childNodes.length;i++){
-				complier(node.childNodes[i],context);
-			}
-			attr = node.attributes;
-			for (var i=0;i<attr.length;i++) {
-				if(attr[i].nodeName=='hg-model'){
-					var name = attr[i].nodeValue;
-					node.addEventListener('input',function(e){
-						context[name] = e.target.value;
-					});
-					node.value = context[name];
-					node.removeAttribute('hg-model');
-				}
-			}
-		}
+		componentReused_$A:[],
+		$loader:(function () {
+		    var moduleSet = {};
+		    var $proxy = function () {};
+		    var loader = {
+		        define: function(name, dependencies, fn) {
+		            if (!moduleSet[name]) {
+		                var module = {
+		                    name: name,
+		                    dependencies: dependencies,
+		                    fn: fn
+		                };
+		                moduleSet[name] = module;
+		            }
+		            return moduleSet[name];
+		        },
+		        use: function(name) {
+		            var module = moduleSet[name];
 		
-		if(node.nodeType === 3){
-			if(reg_g.test(node.nodeValue)){
-				var name,arr;
-				nodeText[0] = node.nodeValue;
-				arr = node.nodeValue.match(reg_g);
-				for(var i=0;i<arr.length;i++){
-					name = reg_content.exec(arr[i])[1]
-					name = name.trim();
-					if(!HerGhost.ArrayUtils.contains(isExistArr,name)){
-						isExistArr.push(name);
-						new Watcher(context,node,name,nodeText);
+		            if (!module.entity) {
+		                var args = [];
+		                for (var i=0; i<module.dependencies.length; i++) {
+		                    if (moduleSet[module.dependencies[i]].entity) {
+		                        args.push(moduleSet[module.dependencies[i]].entity);
+		                    }
+		                    else {
+		                        args.push(this.use(module.dependencies[i]));
+		                    }
+		                }
+		
+		                module.entity = module.fn.apply($proxy, args);
+		            }
+		
+		            return module.entity;
+		        },
+		    };
+		    loader.define.amd = { README:'YEAH MAN!' };
+		    return loader;
+		})(),
+	});
+	HerGhost.$loader.define("request.ajax", [], function() {
+		var 
+			XHR_$O = (function () {
+				if (typeof XMLHttpRequest !== 'undefined') {
+					return new XMLHttpRequest();
+				}
+				var versions = [
+					"MSXML2.XmlHttp.6.0",
+					"MSXML2.XmlHttp.5.0",
+					"MSXML2.XmlHttp.4.0",
+					"MSXML2.XmlHttp.3.0",
+					"MSXML2.XmlHttp.2.0",
+					"Microsoft.XmlHttp"
+				];
+				var xhr;
+				for (var i = 0; i < versions.length; i++) {
+					try {
+						xhr = new ActiveXObject(versions[i]);
+						break;
+					} catch (e) {
+					}
+				}
+				return xhr;
+			})(),
+			XHRSend_$F = function(url, method, data, success,fail,async,progress){
+				if (async === undefined) {
+					async = true;
+				}
+				var x = XHR_$O;
+				if(typeof progress == 'function'){
+					x.addEventListener("progress", progress);
+				}
+				x.open(method, url, async);
+				x.onreadystatechange = function () {
+					switch(x.readyState){
+						case 1:
+							
+							break;
+						case 2:
+							break;
+						case 3:
+							break;
+						case 4:
+							var 
+								status = x.status;
+							if (status >= 200 && status < 300) {
+								success && success(x.responseText,x.responseXML)
+							} else {
+								fail && fail(status);
+							}
+							break;
+						default:
+							throw new Error("AJAX onreadystatechange ERROR!");
+							break;
+					}
+				};
+				if (method == 'POST') {
+					x.setRequestHeader('Content-type', 'application/x-www-form-urlencoded');
+				}
+				x.send(data);
+			},
+			ajax = function(options){
+				var query = [];
+				for (var key in options.data) {
+					query.push(encodeURIComponent(key) + '=' + encodeURIComponent(options.data[key]));
+				}
+				switch (options.type.toUpperCase()){
+					case 'GET':
+						XHRSend_$F(options.url + (query.length ? '?' + query.join('&') : ''), 'GET', null, options.success, options.fail, options.async,options.progress);
+						break;
+					case 'POST':
+						XHRSend_$F(options.url,'POST', query.join('&'), options.success, options.fail, options.async,options.progress)
+						break;
+					default:
+						throw new Error("Unset Ajax GET/POST");
+						break;
+				}
+			};
+		return ajax;
+	});
+	HerGhost.$loader.define("drive", [], function() {
+		function componentsToDocument(component,node){
+			if((typeof component.template)!=='undefined'){
+				node.innerHTML = component.template;
+			}else if((typeof component.templateUrl)!=='undefined'){
+				var componentUrl_$S = HerGhost.componentReused_$A[component.templateUrl];
+				if(componentUrl_$S){
+					node.innerHTML = componentUrl_$S;
+				}else{
+					HerGhost.$loader.use('request.ajax')({
+						url:component.templateUrl,
+						type:'GET',
+						async:false,
+						success:function(text){
+							node.innerHTML = HerGhost.componentReused_$A[component.templateUrl] = text;
+						},
+						fail:function(status){
+							throw new Error("componentsToFragment:fail,status:"+status);
+						},
+					});
+				}
+			}else{
+				throw new Error('template/templateUrl is empty!');
+			}
+			node.childNodes[0].setAttribute('hg-'+HerGhost.uuid(10,16),'');
+			node.parentElement.replaceChild(node.childNodes[0],node);
+		}
+		function nodeToFragment(node,context,options){
+			var 
+				flag = document.createDocumentFragment(),
+				child,c,COMPLIERFLAG = false;
+				while(child=node.firstChild){
+					if(child.nodeName in options.components){
+						COMPLIERFLAG = true;
+						componentsToDocument(options.components[child.nodeName],child);
+					}else{
+						if(!COMPLIERFLAG){
+							complier(child,context);
+						}
+							COMPLIERFLAG = false;
+							flag.appendChild(child);
+					}
+				}
+				return flag;
+		}
+		function complier(node,context){
+			var
+				reg_g = /[\{][\{]([^\{\}]*)[\}][\}]/g, 
+				reg_content = /\{\{(.*)\}\}/,
+				attr,
+				nodeText = [],
+				isExistArr = [];
+				
+			if(node.nodeType === 1){
+				for(var i=0;i<node.childNodes.length;i++){
+					complier(node.childNodes[i],context);
+				}
+				attr = node.attributes;
+				for (var i=0;i<attr.length;i++) {
+					if(attr[i].nodeName=='hg-model'){
+						var name = attr[i].nodeValue;
+						node.addEventListener('input',function(e){
+							context[name] = e.target.value;
+						});
+						node.value = context[name];
+						node.removeAttribute('hg-model');
+					}
+				}
+			}
+			
+			if(node.nodeType === 3){
+				if(reg_g.test(node.nodeValue)){
+					var name,arr;
+					nodeText[0] = node.nodeValue;
+					arr = node.nodeValue.match(reg_g);
+					for(var i=0;i<arr.length;i++){
+						name = reg_content.exec(arr[i])[1]
+						name = name.trim();
+						if(!HerGhost.ArrayUtils.contains(isExistArr,name)){
+							isExistArr.push(name);
+							new Watcher(context,node,name,nodeText);
+						}
 					}
 				}
 			}
 		}
-	}
-	function Watcher(context,node,name,nodeText){
-		this.nodeText = nodeText;
-		this.NODETOGGLEFLAG = true;
-		Dep.target = this;
-		this.name = name;
-		this.node = node;
-		this.context = context;
-		this.update();
-		Dep.target = null;
-	}
-	Watcher.prototype = {
-		update:function(old){
-			this.get(old);
-			this.node.nodeValue = this.value;
-		},
-		get:function(old){
-			if(this.NODETOGGLEFLAG){
-				this.value = this.nodeText[0].replace(new RegExp('\{\{('+ this.name +')\}\}','g'),this.context[this.name]);
-				this.NODETOGGLEFLAG = false;
-			}else{
-				this.value = this.nodeText[0].replace(new RegExp(old,"g"),this.context[this.name]);
-			}
-			this.nodeText[0] = this.value;
+		function Watcher(context,node,name,nodeText){
+			this.nodeText = nodeText;
+			this.NODETOGGLEFLAG = true;
+			Dep.target = this;
+			this.name = name;
+			this.node = node;
+			this.context = context;
+			this.update();
+			Dep.target = null;
 		}
-	}
-	function defineReactive(obj,key,val){
-		var dep = new Dep(),old;
-		Object.defineProperty(obj,key,{
-			get:function(){
-				if(Dep.target){
-					dep.addSub(Dep.target);
-				}
-				return val;
+		Watcher.prototype = {
+			update:function(old){
+				this.get(old);
+				this.node.nodeValue = this.value;
 			},
-			set:function(newval){
-				if(newval===val){
-					return;
+			get:function(old){
+				if(this.NODETOGGLEFLAG){
+					this.value = this.nodeText[0].replace(new RegExp('\{\{('+ this.name +')\}\}','g'),this.context[this.name]);
+					this.NODETOGGLEFLAG = false;
+				}else{
+					this.value = this.nodeText[0].replace(new RegExp(old,"g"),this.context[this.name]);
 				}
-				old = val;
-				val = newval;
-				dep.notify(old);
+				this.nodeText[0] = this.value;
 			}
-		});
-	}
-	function observr(obj,context){
-		Object.keys(obj).forEach(function(key){
-			defineReactive(context,key,obj[key]);
-		});
-	}
-	function Dep(){
-		this.subs = [];
-	}
-	Dep.prototype = {
-		addSub:function(sub){
-			this.subs.push(sub)
-		},
-		notify:function(old){
-			this.subs.forEach(function(sub){
-				sub.update(old);
+		}
+		function defineReactive(obj,key,val){
+			var dep = new Dep(),old;
+			Object.defineProperty(obj,key,{
+				get:function(){
+					if(Dep.target){
+						dep.addSub(Dep.target);
+					}
+					return val;
+				},
+				set:function(newval){
+					if(newval===val){
+						return;
+					}
+					old = val;
+					val = newval;
+					dep.notify(old);
+				}
 			});
 		}
-	}
+		function observr(obj,context){
+			Object.keys(obj).forEach(function(key){
+				defineReactive(context,key,obj[key]);
+			});
+		}
+		function Dep(){
+			this.subs = [];
+		}
+		Dep.prototype = {
+			addSub:function(sub){
+				this.subs.push(sub)
+			},
+			notify:function(old){
+				this.subs.forEach(function(sub){
+					sub.update(old);
+				});
+			}
+		}
+		return {
+			componentsToDocument:componentsToDocument,
+			nodeToFragment:nodeToFragment,
+			complier:complier,
+			Watcher:Watcher,
+			defineReactive:defineReactive,
+			observr:observr,
+			Dep:Dep
+		}
+	});
+
 	function Deferred(){ return new Promise(); }
 	function Promise(){ this.callbacks = []; }
 	Promise.prototype = { 

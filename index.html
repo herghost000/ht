@@ -11,17 +11,17 @@
 			<span id="b">
 				<em>info:{{message}}</em>sa
 			</span> 
-			<MY></MY>
+			<MY>{{message}}</MY>
 			<span>--------</span>
 			
-			<span>sassa<TEST></TEST></span>
+			<span>{{message}}<TEST>{{message}}</TEST></span>
 		</div>
 		<script type="text/javascript">
 			var Child = {
 			  templateUrl: 't.c'
 			}
 			var a = HerGhost({
-				el:'app',
+				element:'app',
 				data:{
 					message:'aaa',
 					name:'ddd'
