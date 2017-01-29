@@ -429,32 +429,34 @@ var
 			Dep:Dep
 		}
 	});
-
-	function Deferred(){ return new Promise(); }
-	function Promise(){ this.callbacks = []; }
-	Promise.prototype = { 
-		construct: Promise, 
-		resolve: function(result) { 
-			this.complete('resolve', result); 
-		},
-		reject: function(result) {
-		    this.complete("reject", result);
-		},
-
-		complete: function(type, result) {
-		    while (this.callbacks[0]) {
-		        this.callbacks.shift()[type](result);
-		    }
-		},
-
-		then: function(successHandler, failedHandler) {
-		    this.callbacks.push({
-		        resolve: successHandler,
-		        reject: failedHandler
-		    });
-		    return this;
-		}
-	};
+	HerGhost.$loader.define('deferred',[],function(){
+		function deferred(){ return new Promise(); }
+		function Promise(){ this.callbacks = []; }
+		Promise.prototype = { 
+			construct: Promise, 
+			resolve: function(result) { 
+				this.complete('resolve', result); 
+			},
+			reject: function(result) {
+			    this.complete("reject", result);
+			},
+	
+			complete: function(type, result) {
+			    while (this.callbacks[0]) {
+			        this.callbacks.shift()[type](result);
+			    }
+			},
+	
+			then: function(successHandler, failedHandler) {
+			    this.callbacks.push({
+			        resolve: successHandler,
+			        reject: failedHandler
+			    });
+			    return this;
+			}
+		};
+		return deferred;
+	});
 
 	HerGhost.extend({
 		isObject:function(o){
@@ -484,7 +486,6 @@ var
 			}
 			return new error();
 		},
-		Deferred:Deferred,
 	});
 	
 var
@@ -518,74 +519,75 @@ var
 	        }
 	    }
 	};
-//HANDLER:disableScroll/enableScroll( HerGhost.scrollHanlder.disableScroll() / HerGhost.scrollHanlder.enableScroll() )
-var 
-	 keys = { 37: 1, 38: 1, 39: 1, 40: 1 },
-	 oldonwheel, 
-	 oldonmousewheel1, 
-	 oldonmousewheel2, 
-	 oldontouchmove, 
-	 oldonkeydown,
-     isDisabled;
+	//HANDLER:disableScroll/enableScroll: HerGhost.$loader.use('scrollHanlder').disableScroll() / HerGhost.$loader.use('scrollHanlder').enableScroll()
+	HerGhost.$loader.define('scrollHanlder',[],function(){
+	var 
+		keys = { 37: 1, 38: 1, 39: 1, 40: 1 },
+		oldonwheel, 
+		oldonmousewheel1, 
+		oldonmousewheel2, 
+		oldontouchmove, 
+		oldonkeydown,
+	    isDisabled;
+	
+	    function scrollHanlder(){}
+	    scrollHanlder.prototype.preventDefault =  function (e) {
+	        e = e || window.event;
+	        if (e.preventDefault)
+	            e.preventDefault();
+	        e.returnValue = false;
+	    }
+	   
+	
+	    scrollHanlder.prototype.preventDefaultForScrollKeys = function (e) {
+	        if (keys[e.keyCode]) {
+	        	try{
+					this.preventDefault(e);
+	        	}catch(err){
+	        	}
+	            return false;
+	        }
+	    }
+	   
+	    scrollHanlder.prototype.disableScroll = function disableScroll() {
+	        if (window.addEventListener) {
+	            window.addEventListener('DOMMouseScroll', this.preventDefault, false);
+	        }
+	        oldonwheel = window.onwheel;
+	        window.onwheel = this.preventDefault; 
+	
+	        oldonmousewheel1 = window.onmousewheel;
+	        window.onmousewheel = this.preventDefault; 
+	        oldonmousewheel2 = document.onmousewheel;
+	        document.onmousewheel = this.preventDefault;
+	
+	        oldontouchmove = window.ontouchmove;
+	        window.ontouchmove = this.preventDefault; 
+	
+	        oldonkeydown = document.onkeydown;
+	        document.onkeydown = this.preventDefaultForScrollKeys;
+	        isDisabled = true;
+	    }
+	
+	    scrollHanlder.prototype.enableScroll = function () {
+	        if (!isDisabled) return;
+	        if (window.removeEventListener){
+	            window.removeEventListener('DOMMouseScroll', this.preventDefault, false);
+	        }
+	
+	        window.onwheel = oldonwheel; 
+	
+	        window.onmousewheel = oldonmousewheel1;
+	        document.onmousewheel = oldonmousewheel2; 
+	
+	        window.ontouchmove = oldontouchmove; 
+	
+	        document.onkeydown = oldonkeydown;
+	        isDisabled = false;
+	    }
+	    return new scrollHanlder();
+	});
 
-    function scrollHanlder(){}
-    scrollHanlder.prototype.preventDefault =  function (e) {
-        e = e || window.event;
-        if (e.preventDefault)
-            e.preventDefault();
-        e.returnValue = false;
-    }
-   
-
-    scrollHanlder.prototype.preventDefaultForScrollKeys = function (e) {
-        if (keys[e.keyCode]) {
-        	try{
-				this.preventDefault(e);
-        	}catch(err){
-        	}
-            return false;
-        }
-    }
-   
-    scrollHanlder.prototype.disableScroll = function disableScroll() {
-        if (window.addEventListener) {
-            window.addEventListener('DOMMouseScroll', this.preventDefault, false);
-        }
-        oldonwheel = window.onwheel;
-        window.onwheel = this.preventDefault; 
-
-        oldonmousewheel1 = window.onmousewheel;
-        window.onmousewheel = this.preventDefault; 
-        oldonmousewheel2 = document.onmousewheel;
-        document.onmousewheel = this.preventDefault;
-
-        oldontouchmove = window.ontouchmove;
-        window.ontouchmove = this.preventDefault; 
-
-        oldonkeydown = document.onkeydown;
-        document.onkeydown = this.preventDefaultForScrollKeys;
-        isDisabled = true;
-    }
-
-    scrollHanlder.prototype.enableScroll = function () {
-        if (!isDisabled) return;
-        if (window.removeEventListener){
-            window.removeEventListener('DOMMouseScroll', this.preventDefault, false);
-        }
-
-        window.onwheel = oldonwheel; 
-
-        window.onmousewheel = oldonmousewheel1;
-        document.onmousewheel = oldonmousewheel2; 
-
-        window.ontouchmove = oldontouchmove; 
-
-        document.onkeydown = oldonkeydown;
-        isDisabled = false;
-    }
-    HerGhost.extend({
-    	scrollHanlder:new scrollHanlder,
-    });
 
 	HerGhost.extend({
 		run:function(){
