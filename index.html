@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+		<title></title>
+		<script src="HerGhost.js" type="text/javascript" charset="utf-8"></script>
+	</head>
+	<body>
+		<div id="app">
+			<input type="text" name="" id="" value="" hg-model="message"/>
+			<span id="b">
+				<em>info:{{message}}</em>sa
+			</span> 
+			<MY></MY>
+			<span>--------</span>
+			
+			<span>sassa<TEST></TEST></span>
+		</div>
+		<script type="text/javascript">
+			var Child = {
+			  templateUrl: 't.c'
+			}
+			var a = HerGhost({
+				el:'app',
+				data:{
+					message:'aaa',
+					name:'ddd'
+				},
+				ready:function(){
+					alert(document.getElementsByTagName('em')[0].nodeName);
+				},
+				components:{
+					'MY':Child,
+					'TEST':Child
+				}
+			});
+		</script>
+	</body>
+</html>
