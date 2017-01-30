@@ -289,7 +289,6 @@ var
 			if((typeof component.template)!=='undefined'){
 				node.innerHTML = component.template;
 			}else if((typeof component.templateUrl)!=='undefined'){
-				console.log(this)
 				var componentUrl_$S = that.componentReused_$A[component.templateUrl];
 				if(componentUrl_$S){
 					node.innerHTML = componentUrl_$S;
@@ -374,6 +373,7 @@ var
 				}
 			}
 		}
+		that.nodeValueArr_$Watcher = []
 		function Watcher(context,node,name,nodeText){
 			this.nodeText = nodeText;
 			this.NODETOGGLEFLAG = true;
@@ -391,12 +391,13 @@ var
 			},
 			get:function(old){
 				if(this.NODETOGGLEFLAG){
+					that.nodeValueArr_$Watcher = this.nodeText[0].split(new RegExp('\{\{('+ this.name +')\}\}','g'));
 					this.value = this.nodeText[0].replace(new RegExp('\{\{('+ this.name +')\}\}','g'),this.context[this.name]);
 					this.NODETOGGLEFLAG = false;
 				}else{
-					this.value = this.nodeText[0].replace(new RegExp(old,"g"),this.context[this.name]);
+					that.nodeValueArr_$Watcher[1] = this.context[this.name];
+					this.value = that.nodeValueArr_$Watcher.join('');
 				}
-				this.nodeText[0] = this.value;
 			}
 		}
 		function defineReactive(obj,key,val){
