@@ -4,34 +4,35 @@
 		<meta charset="UTF-8">
 		<title></title>
 		<script src="HerGhost.js" type="text/javascript" charset="utf-8"></script>
+		<style type="text/css">
+			.box{
+				vertical-align: middle;
+			}
+		</style>
 	</head>
 	<body>
 		<div id="app">
-			<input type="text" name="" id="" value="" hg-model="message"/>
-			<span id="b">
-				<em>info:{{message}}</em>sa
-			</span> 
-			<MY>{{message}}</MY>
-			<span>--------</span>
-			
-			<span>{{message}}<TEST>{{message}}</TEST></span>
+			<input type="text" hg-model="message"></input>
+			{{message}}
+			<address>
+				<MY></MY>
+				{{message}}
+			</address>
+			<MY></MY>
 		</div>
 		<script type="text/javascript">
 			var Child = {
 			  templateUrl: 't.c'
 			}
-			var a = HerGhost({
+			var hg = HerGhost({
 				element:'app',
 				data:{ 
 					message:'aaa',
-					name:'ddd'
 				},
 				ready:function(){
-					alert(document.getElementsByTagName('em')[0].nodeName);
 				},
 				components:{
 					'MY':Child,
-					'TEST':Child
 				}
 			});
 		</script>

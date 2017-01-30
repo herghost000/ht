@@ -103,6 +103,18 @@ var
 			    return ret;
 			}
 		},
+		NodeUtils:{
+			hasAttribute:function(node,str){
+				if(!!node.attributes){
+					for(var i = 0;i<node.attributes.length;i++){
+						if(node.attributes[i].nodeName === str){
+							return true;
+						}
+					}
+				}
+				return false;
+			}
+		},
 		uuid:function(len, radix) {
 		    var chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'.split('');
 		    var uuid = [], i;
@@ -151,7 +163,6 @@ var
 		        else { funcs.push(fn); }
 		    }
 		})(),
-		componentReused_$A:[],
 		$loader:(function () {
 		    var moduleSet = {};
 		    var $proxy = function () {};
@@ -272,11 +283,14 @@ var
 		return ajax;
 	});
 	HerGhost.$loader.define("drive", [], function() {
+		var that = this;
+		that.componentReused_$A = [];
 		function componentsToDocument(component,node){
 			if((typeof component.template)!=='undefined'){
 				node.innerHTML = component.template;
 			}else if((typeof component.templateUrl)!=='undefined'){
-				var componentUrl_$S = HerGhost.componentReused_$A[component.templateUrl];
+				console.log(this)
+				var componentUrl_$S = that.componentReused_$A[component.templateUrl];
 				if(componentUrl_$S){
 					node.innerHTML = componentUrl_$S;
 				}else{
@@ -285,7 +299,7 @@ var
 						type:'GET',
 						async:false,
 						success:function(text){
-							node.innerHTML = HerGhost.componentReused_$A[component.templateUrl] = text;
+							node.innerHTML = that.componentReused_$A[component.templateUrl] = text;
 						},
 						fail:function(status){
 							throw new Error("componentsToFragment:fail,status:"+status);
@@ -295,38 +309,41 @@ var
 			}else{
 				throw new Error('template/templateUrl is empty!');
 			}
-			node.childNodes[0].setAttribute('hg-'+HerGhost.uuid(10,16),'');
-			node.parentElement.replaceChild(node.childNodes[0],node);
-		}
+			node.childNodes[0].setAttribute('hg-component','');
+			node.childNodes[0].setAttribute('hg-'+HerGhost.uuid(16,16),'');
+			node.parentNode.replaceChild(node.childNodes[0],node);
+			node = null;
+		};
 		function nodeToFragment(node,context,options){
 			var 
 				flag = document.createDocumentFragment(),
-				child,c,COMPLIERFLAG = false;
+				child,c;
 				while(child=node.firstChild){
-					if(child.nodeName in options.components){
-						COMPLIERFLAG = true;
-						componentsToDocument(options.components[child.nodeName],child);
-					}else{
-						if(!COMPLIERFLAG){
-							complier(child,context);
-						}
-							COMPLIERFLAG = false;
-							flag.appendChild(child);
+					if(!HerGhost.NodeUtils.hasAttribute(child,'hg-component')){
+						complier(child,context,options);
+					}
+					if(!(child.nodeName in options.components)){// 
+						flag.appendChild(child);
 					}
 				}
 				return flag;
 		}
-		function complier(node,context){
+		function complier(node,context,options){
 			var
 				reg_g = /[\{][\{]([^\{\}]*)[\}][\}]/g, 
 				reg_content = /\{\{(.*)\}\}/,
 				attr,
 				nodeText = [],
 				isExistArr = [];
-				
-			if(node.nodeType === 1){
+			
+			//元素节点且是用户定义的组件
+			if(node.nodeType === 1 && (node.nodeName in options.components)){
+				componentsToDocument(options.components[node.nodeName],node);
+			}
+			//元素节点且不是用户定义的组件
+			if(node.nodeType === 1 && !(node.nodeName in options.components)){
 				for(var i=0;i<node.childNodes.length;i++){
-					complier(node.childNodes[i],context);
+					complier(node.childNodes[i],context,options);
 				}
 				attr = node.attributes;
 				for (var i=0;i<attr.length;i++) {
