@@ -770,6 +770,26 @@ var
         OBJ.animationEnd=animationEnd;
         return OBJ;
 	});
+	HerGhost.$loader.define('di',[],function(){
+		var DI = function (dependency) {
+		  this.dependency = dependency;
+		};
+		
+		DI.prototype.inject = function (func) {
+		  	var deps = /^[^(]+\(([^)]+)/.exec(func.toString());
+		  	
+		  	deps = deps ? deps[1]
+		    	.split(/\s?,\s?/)
+		    	.map(function (dep) {
+		      		return this.dependency[dep];
+		    	}.bind(this)) : [];
+		    	
+		  	return function () {
+		    	return func.apply(this, deps);
+		  	};
+		};
+		return DI;
+	});
 	HerGhost.fn.extend({
 		$animate:function(options,callback){
 			var 
@@ -795,7 +815,8 @@ var
 		},
 		$event:{
 			animation:HerGhost.$loader.use('event.animation'),
-		}
+		},
+		$inject:function(){},
 	});
 
 	// Register as a named AMD module,
