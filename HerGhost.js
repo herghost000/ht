@@ -103,6 +103,25 @@ var
 			    return ret;
 			}
 		},
+		StringUtils:{
+			trim:function(str){
+				var whitespace = ' \n\r\t\f\x0b\xa0\u2000\u2001\u2002\u2003\n\
+				\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u200b\u2028\u2029\u3000';
+				for(var i=0;i<str.length;i++){
+					if(whitespace.indexOf(str.charAt(i)) === -1){
+						str = str.substring(i);
+						break;
+					}
+				}
+				for(i = str.length-1;i>=0;i--){
+					if(whitespace.indexOf(str.charAt(i)) === -1){
+						str = str.substring(0,i+1);
+						break;
+					}
+				}
+				return whitespace.indexOf(str.charAt(0)) === -1 ? str : '';
+			}
+		},
 		NodeUtils:{
 			hasAttribute:function(node,str){
 				if(!!node.attributes){
@@ -222,6 +241,7 @@ var
 						xhr = new ActiveXObject(versions[i]);
 						break;
 					} catch (e) {
+						e.printStack();
 					}
 				}
 				return xhr;
@@ -335,42 +355,44 @@ var
 				nodeText = [],
 				isExistArr = [];
 			
-			//元素节点且是用户定义的组件
-			if(node.nodeType === 1 && (node.nodeName in options.components)){
-				componentsToDocument(options.components[node.nodeName],node);
-			}
-			//元素节点且不是用户定义的组件
-			if(node.nodeType === 1 && !(node.nodeName in options.components)){
-				for(var i=0;i<node.childNodes.length;i++){
-					complier(node.childNodes[i],context,options);
-				}
-				attr = node.attributes;
-				for (var i=0;i<attr.length;i++) {
-					if(attr[i].nodeName=='hg-model'){
-						var name = attr[i].nodeValue;
-						node.addEventListener('input',function(e){
-							context[name] = e.target.value;
-						});
-						node.value = context[name];
-						node.removeAttribute('hg-model');
-					}
-				}
-			}
-			
-			if(node.nodeType === 3){
-				if(reg_g.test(node.nodeValue)){
-					var name,arr;
-					nodeText[0] = node.nodeValue;
-					arr = node.nodeValue.match(reg_g);
-					for(var i=0;i<arr.length;i++){
-						name = reg_content.exec(arr[i])[1]
-						name = name.trim();
-						if(!HerGhost.ArrayUtils.contains(isExistArr,name)){
-							isExistArr.push(name);
-							new Watcher(context,node,name,nodeText);
+			switch (node.nodeType){
+				case 1:
+					if(node.nodeName in options.components){
+						componentsToDocument(options.components[node.nodeName],node);
+					}else{
+						for(var i=0;i<node.childNodes.length;i++){
+							complier(node.childNodes[i],context,options);
+						}
+						attr = node.attributes;
+						for (var i=0;i<attr.length;i++) {
+							if(attr[i].nodeName=='hg-model'){
+								var name = attr[i].nodeValue;
+								node.addEventListener('input',function(e){
+									context[name] = e.target.value;
+								});
+								node.value = context[name];
+								node.removeAttribute('hg-model');
+							}
 						}
 					}
-				}
+					break;
+				case 3:
+					if(reg_g.test(node.nodeValue)){
+						var name,arr;
+						nodeText[0] = node.nodeValue;
+						arr = node.nodeValue.match(reg_g);
+						for(var i=0;i<arr.length;i++){
+							name = reg_content.exec(arr[i])[1]
+							name = name.trim();
+							if(!HerGhost.ArrayUtils.contains(isExistArr,name)){
+								isExistArr.push(name);
+								new Watcher(context,node,name,nodeText);
+							}
+						}
+					}
+					break;
+				default:
+					break;
 			}
 		}
 		that.nodeValueArr_$Watcher = []
@@ -605,12 +627,175 @@ var
 	    }
 	    return new scrollHanlder();
 	});
-
-
-	HerGhost.extend({
-		run:function(){
-			
+	HerGhost.$loader.define('animation.tween',[],function(){
+		var Tween = {
+		    Linear: function(t,b,c,d){ return c*t/d + b; },
+		    Quad: {
+		        easeIn: function(t,b,c,d){ return c*(t/=d)*t + b; },
+		        easeOut: function(t,b,c,d){ return -c *(t/=d)*(t-2) + b; },
+		        easeInOut: function(t,b,c,d){if ((t/=d/2) < 1) return c/2*t*t + b;return -c/2 * ((--t)*(t-2) - 1) + b;}
+		    },
+		    Cubic: {
+		        easeIn: function(t,b,c,d){ return c*(t/=d)*t*t + b; },
+		        easeOut: function(t,b,c,d){ return c*((t=t/d-1)*t*t + 1) + b; },
+		        easeInOut: function(t,b,c,d){if ((t/=d/2) < 1) return c/2*t*t*t + b;return c/2*((t-=2)*t*t + 2) + b;}
+		    },
+		    Quart: {
+		        easeIn: function(t,b,c,d){return c*(t/=d)*t*t*t + b;},
+		        easeOut: function(t,b,c,d){return -c * ((t=t/d-1)*t*t*t - 1) + b;},
+		        easeInOut: function(t,b,c,d){if ((t/=d/2) < 1) return c/2*t*t*t*t + b;return -c/2 * ((t-=2)*t*t*t - 2) + b;}
+		    },
+		    Quint: {
+		        easeIn: function(t,b,c,d){return c*(t/=d)*t*t*t*t + b;},
+		        easeOut: function(t,b,c,d){return c*((t=t/d-1)*t*t*t*t + 1) + b;},
+		        easeInOut: function(t,b,c,d){if ((t/=d/2) < 1) return c/2*t*t*t*t*t + b;return c/2*((t-=2)*t*t*t*t + 2) + b;}
+		    },
+		    Sine: {
+		        easeIn: function(t,b,c,d){ return -c * Math.cos(t/d * (Math.PI/2)) + c + b; },
+		        easeOut: function(t,b,c,d){ return c * Math.sin(t/d * (Math.PI/2)) + b; },
+		        easeInOut: function(t,b,c,d){ return -c/2 * (Math.cos(Math.PI*t/d) - 1) + b; }
+		    },
+		    Expo: {
+		        easeIn: function(t,b,c,d){ return (t==0) ? b : c * Math.pow(2, 10 * (t/d - 1)) + b; },
+		        easeOut: function(t,b,c,d){return (t==d) ? b+c : c * (-Math.pow(2, -10 * t/d) + 1) + b;},
+		        easeInOut: function(t,b,c,d){if (t==0) return b;if (t==d) return b+c;if ((t/=d/2) < 1) return c/2 * Math.pow(2, 10 * (t - 1)) + b;return c/2 * (-Math.pow(2, -10 * --t) + 2) + b;}
+		    },
+		    Circ: {
+		        easeIn: function(t,b,c,d){return -c * (Math.sqrt(1 - (t/=d)*t) - 1) + b;},
+		        easeOut: function(t,b,c,d){return c * Math.sqrt(1 - (t=t/d-1)*t) + b;},
+		        easeInOut: function(t,b,c,d){if ((t/=d/2) < 1) return -c/2 * (Math.sqrt(1 - t*t) - 1) + b;return c/2 * (Math.sqrt(1 - (t-=2)*t) + 1) + b;}
+		    },
+		    Elastic: {
+		        easeIn: function(t,b,c,d,a,p){if (t==0) return b;  if ((t/=d)==1) return b+c;  if (!p) p=d*.3;if (!a || a < Math.abs(c)) { a=c; var s=p/4; }else var s = p/(2*Math.PI) * Math.asin (c/a);return -(a*Math.pow(2,10*(t-=1)) * Math.sin( (t*d-s)*(2*Math.PI)/p )) + b;},
+		        easeOut: function(t,b,c,d,a,p){if (t==0) return b;  if ((t/=d)==1) return b+c;  if (!p) p=d*.3;if (!a || a < Math.abs(c)) { a=c; var s=p/4; }else var s = p/(2*Math.PI) * Math.asin (c/a);return (a*Math.pow(2,-10*t) * Math.sin( (t*d-s)*(2*Math.PI)/p ) + c + b);},
+		        easeInOut: function(t,b,c,d,a,p){if (t==0) return b;  if ((t/=d/2)==2) return b+c;  if (!p) p=d*(.3*1.5);if (!a || a < Math.abs(c)) { a=c; var s=p/4; }else var s = p/(2*Math.PI) * Math.asin (c/a);if (t < 1) return -.5*(a*Math.pow(2,10*(t-=1)) * Math.sin( (t*d-s)*(2*Math.PI)/p )) + b;return a*Math.pow(2,-10*(t-=1)) * Math.sin( (t*d-s)*(2*Math.PI)/p )*.5 + c + b;}
+		    },
+		    Back: {
+		        easeIn: function(t,b,c,d,s){if (s == undefined) s = 1.70158;return c*(t/=d)*t*((s+1)*t - s) + b;},
+		        easeOut: function(t,b,c,d,s){if (s == undefined) s = 1.70158;return c*((t=t/d-1)*t*((s+1)*t + s) + 1) + b;},
+		        easeInOut: function(t,b,c,d,s){if (s == undefined) s = 1.70158; if ((t/=d/2) < 1) return c/2*(t*t*(((s*=(1.525))+1)*t - s)) + b;return c/2*((t-=2)*t*(((s*=(1.525))+1)*t + s) + 2) + b;}
+		    },
+		    Bounce: {
+		        easeIn: function(t,b,c,d){return c - Tween.Bounce.easeOut(d-t, 0, c, d) + b;},
+		        easeOut: function(t,b,c,d){if ((t/=d) < (1/2.75)) {return c*(7.5625*t*t) + b;} else if (t < (2/2.75)) {return c*(7.5625*(t-=(1.5/2.75))*t + .75) + b;} else if (t < (2.5/2.75)) {return c*(7.5625*(t-=(2.25/2.75))*t + .9375) + b;} else {return c*(7.5625*(t-=(2.625/2.75))*t + .984375) + b;}},
+		        easeInOut: function(t,b,c,d){if (t < d/2) return Tween.Bounce.easeIn(t*2, 0, c, d) * .5 + b;else return Tween.Bounce.easeOut(t*2-d, 0, c, d) * .5 + c*.5 + b;}
+		    }
+		};
+		return Tween;
+	});
+	HerGhost.$loader.define('event.animation',[],function(){
+		var OBJ = {},
+            body=document.body || document.documentElement,
+            style=body.style, 
+            transition="transition",
+            transitionEnd,
+            animationEnd,
+            vendorPrefix; 
+          
+        transition=transition.charAt(0).toUpperCase() + transition.substr(1);
+  
+        vendorPrefix=(function(){
+            var  i=0, vendor=["Moz", "Webkit", "Khtml", "O", "ms"];
+            while (i < vendor.length) {
+                if (typeof style[vendor[i] + transition] === "string") {
+                  return vendor[i];
+                }
+                i++;
+            }
+            return false;
+        })();
+  
+        transitionEnd=(function(){
+            var transEndEventNames = {
+              WebkitTransition : 'webkitTransitionEnd',
+              MozTransition    : 'transitionend',
+              OTransition      : 'oTransitionEnd otransitionend',
+              transition       : 'transitionend'
+            }
+            for(var name in transEndEventNames){
+                if(typeof style[name] === "string"){
+                    return transEndEventNames[name]
+                }
+            }
+        })();
+  
+        animationEnd=(function(){
+            var animEndEventNames = {
+              WebkitAnimation : 'webkitAnimationEnd',
+              animation      : 'animationend'
+            }
+            for(var name in animEndEventNames){
+                if(typeof style[name] === "string"){
+                    return animEndEventNames[name]
+                }
+            }
+        })();
+        OBJ.addTranEvent=function(elem,fn){
+            var called=false;
+            var fncallback = function(){
+                    if(!called){
+                        fn();
+                        called=true;
+                    }
+            };
+            (function handler(){    
+                elem.addEventListener(transitionEnd, function () {
+                    elem.removeEventListener(transitionEnd, arguments.callee, false);
+                        fncallback();
+                }, false);
+            })();
+        };
+        OBJ.addAnimEvent=function(elem,fn){
+            elem.addEventListener(animationEnd,fn,false)
+        };
+  
+        OBJ.removeAnimEvent=function(elem,fn){
+            elem.removeEventListener(animationEnd,fn,false)
+        };
+  
+        OBJ.setStyleAttribute=function(elem,val){
+            if(Object.prototype.toString.call(val)==="[object Object]"){
+                for(var name in val){
+                    if(/^transition|animation|transform/.test(name)){
+                        var styleName=name.charAt(0).toUpperCase() + name.substr(1);
+                        elem.style[vendorPrefix+styleName]=val[name];
+                    }else{
+                        elem.style[name]=val[name];
+                    }
+                }
+            }
+        };
+        OBJ.transitionEnd=transitionEnd;
+        OBJ.vendorPrefix=vendorPrefix;
+        OBJ.animationEnd=animationEnd;
+        return OBJ;
+	});
+	HerGhost.fn.extend({
+		$animate:function(options,callback){
+			var 
+				timer = null,
+				start = 0,
+				count = 0,
+				endCount = 30;
+			clearInterval(timer);
+			timer = setInterval(function(){
+					count++;
+					if(count>endCount){
+						clearInterval(timer);
+						callback && callback();
+						return;
+					};
+					if(options.style==='Linear'){
+						options.el.style[options.style] = HerGhost.$loader.use('animation.tween')[options.tween](count,start,options.value,endCount)+"px";
+					}else{
+						options.el.style[options.style] = HerGhost.$loader.use('animation.tween')[options.tween][options.type](count,start,options.value,endCount)+"px";
+					}
+				}
+			,30);
 		},
+		$event:{
+			animation:HerGhost.$loader.use('event.animation'),
+		}
 	});
 
 	// Register as a named AMD module,

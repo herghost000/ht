@@ -17,6 +17,8 @@
 				<MY></MY>{{message}}
 			</address>
 			<MY></MY>
+			<button onclick="t()">click</button>
+			<div id="b" style="width: 100px;height: 100px;background: brown;position: relative;"></div>
 		</div>
 		<script type="text/javascript">
 			var Child = {
@@ -28,11 +30,27 @@
 					message:'aaa',
 				},
 				ready:function(){
+					
 				},
 				components:{
 					'MY':Child,
 				}
 			});
+			function t(){
+				var box = document.getElementById('b');
+				hg.$animate({
+					el:box,
+					style:'left',
+					value:600,
+					tween:'Back',
+					type:'easeIn'
+				},function(){
+					
+				});
+				hg.$event.animation.addAnimEvent(element,function(){
+					
+				})
+			}
 		</script>
 	</body>
 </html>
