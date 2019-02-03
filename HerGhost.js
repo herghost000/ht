@@ -1,4 +1,4 @@
-//2016-12-29 9:30:45 from Tien.Lo QQ:77209302 么么
+//2016-12-29 9:30:45 from 么姐
 (function(global, factory){
 	"use strict";
 	//window is global.
